@@ -5,12 +5,13 @@
  * @format
  */
 
-import {StatusBar, StyleSheet, Text, useColorScheme, View, Button, Animated, Dimensions } from 'react-native';
+import {StatusBar, StyleSheet, Text, useColorScheme, View, Button, Animated, Dimensions, TouchableOpacity, Modal } from 'react-native';
 import {
   SafeAreaProvider,
 } from 'react-native-safe-area-context';
 import { Camera, useCameraDevice, useCameraPermission, useCodeScanner } from 'react-native-vision-camera';
 import { useEffect, useState, useRef } from 'react';
+import BarcodeGenerator from './BarcodeGenerator';
 
 const { width, height } = Dimensions.get('window');
 const SCAN_AREA_SIZE = width * 0.7;
@@ -30,16 +31,32 @@ function AppContent() {
   const device = useCameraDevice('back')
   const { hasPermission, requestPermission } = useCameraPermission()
   const [scannedCode, setScannedCode] = useState<string>('');
+  const [codeType, setCodeType] = useState<string>('');
+  const [showGenerator, setShowGenerator] = useState<boolean>(false);
   const scanLineAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const codeScanner = useCodeScanner({
-    codeTypes: ['qr', 'ean-13'],
+    codeTypes: [
+      'qr',
+      'ean-13',
+      'ean-8',
+      'code-128',
+      'code-39',
+      'code-93',
+      'itf',
+      'upc-e',
+      'pdf-417',
+      'aztec',
+      'data-matrix',
+    ],
     onCodeScanned: (codes) => {
       if (codes.length > 0 && !scannedCode) {
         console.log(`Scanned ${codes.length} codes!`, codes);
         console.log('First code value:', codes[0].value);
+        console.log('Code type:', codes[0].type);
         setScannedCode(codes[0].value || 'No value');
+        setCodeType(codes[0].type || 'Unknown');
         
         // Trigger success animation
         Animated.sequence([
@@ -89,6 +106,11 @@ function AppContent() {
     outputRange: [0, SCAN_AREA_SIZE - 4],
   });
 
+  const handleScanAgain = () => {
+    setScannedCode('');
+    setCodeType('');
+  };
+
   console.log('device', device, 'hasPermission', hasPermission);
 
   if (!hasPermission) {
@@ -125,7 +147,7 @@ function AppContent() {
       <Camera 
         style={StyleSheet.absoluteFill} 
         device={device} 
-        isActive={true} 
+        isActive={!showGenerator} 
         codeScanner={codeScanner}
       />
       
@@ -158,9 +180,17 @@ function AppContent() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Barcode Scanner</Text>
-        <Text style={styles.headerSubtitle}>Align barcode within the frame</Text>
+        <Text style={styles.headerTitle}>Barcode & QR Scanner</Text>
+        <Text style={styles.headerSubtitle}>Align code within the frame</Text>
       </View>
+
+      {/* Generate Code Button */}
+      <TouchableOpacity 
+        style={styles.generateFab}
+        onPress={() => setShowGenerator(true)}
+      >
+        <Text style={styles.generateFabText}>+</Text>
+      </TouchableOpacity>
 
       {/* Result display */}
       {scannedCode ? (
@@ -173,10 +203,11 @@ function AppContent() {
           <View style={styles.resultCard}>
             <Text style={styles.resultIcon}>✓</Text>
             <Text style={styles.resultLabel}>Scanned Successfully</Text>
+            <Text style={styles.codeType}>{codeType.toUpperCase()}</Text>
             <Text style={styles.resultCode}>{scannedCode}</Text>
             <Button 
               title="Scan Again" 
-              onPress={() => setScannedCode('')}
+              onPress={handleScanAgain}
               color="#10b981"
             />
           </View>
@@ -191,6 +222,15 @@ function AppContent() {
           </View>
         </View>
       )}
+
+      {/* Generator Modal */}
+      <Modal
+        visible={showGenerator}
+        animationType="slide"
+        onRequestClose={() => setShowGenerator(false)}
+      >
+        <BarcodeGenerator onClose={() => setShowGenerator(false)} />
+      </Modal>
     </View>
   );
 }
@@ -336,6 +376,28 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  generateFab: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 10,
+  },
+  generateFabText: {
+    fontSize: 32,
+    color: '#fff',
+    fontWeight: '300',
+  },
   instructionContainer: {
     position: 'absolute',
     bottom: 80,
@@ -391,6 +453,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0f172a',
     marginBottom: 8,
+  },
+  codeType: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6366f1',
+    marginBottom: 8,
+    letterSpacing: 1,
   },
   resultCode: {
     fontSize: 16,
