@@ -2436,6 +2436,8 @@ PODS:
     - React-perflogger (= 0.82.1)
     - React-utils (= 0.82.1)
     - SocketRocket
+  - ReactNativeART (1.2.0):
+    - React
   - RNPermissions (5.4.4):
     - boost
     - DoubleConversion
@@ -2604,6 +2606,7 @@ DEPENDENCIES:
   - ReactAppDependencyProvider (from `build/generated/ios`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - "ReactNativeART (from `../node_modules/@react-native-community/art`)"
   - RNPermissions (from `../node_modules/react-native-permissions`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - SocketRocket (~> 0.7.1)
@@ -2764,6 +2767,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  ReactNativeART:
+    :path: "../node_modules/@react-native-community/art"
   RNPermissions:
     :path: "../node_modules/react-native-permissions"
   RNSVG:
@@ -2848,6 +2853,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: cc2795efe30a023c3a505676b9c748b664b9c0a1
   ReactCodegen: 897bad2d2f722ff4dc46fc144f9cc018db0e2ce4
   ReactCommon: c5803af00bd3737dc1631749b1f1da5beba5b049
+  ReactNativeART: 78edc68dd4a1e675338cd0cd113319cf3a65f2ab
   RNPermissions: b18c89131904a59a0dad159f15b50dccbf3f5900
   RNSVG: 16667e18ce40770c8c41a87f3133004c5cf4e09a
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748

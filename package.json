@@ -10,9 +10,12 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-community/art": "^1.2.0",
     "@react-native/new-app-screen": "0.82.1",
+    "jsbarcode": "^3.12.1",
     "react": "19.1.1",
     "react-native": "0.82.1",
+    "react-native-barcode-builder": "^2.0.0",
     "react-native-hole-view": "^3.0.1",
     "react-native-permissions": "^5.4.4",
     "react-native-qrcode-svg": "^6.3.20",

@@ -17,6 +17,14 @@ try {
   console.warn('react-native-qrcode-svg not available');
 }
 
+// Try-catch import for Barcode
+let Barcode: any;
+try {
+  Barcode = require('react-native-barcode-builder').default;
+} catch (e) {
+  console.warn('react-native-barcode-builder not available');
+}
+
 interface BarcodeGeneratorProps {
   onClose: () => void;
 }
@@ -25,25 +33,40 @@ function BarcodeGenerator({ onClose }: BarcodeGeneratorProps) {
   const [inputData, setInputData] = useState('');
   const [generatedData, setGeneratedData] = useState('');
   const [codeType, setCodeType] = useState<'qr' | 'barcode'>('qr');
+  const [barcodeFormat, setBarcodeFormat] = useState<'CODE128' | 'EAN13' | 'CODE39'>('CODE128');
 
   const sampleData = [
-    { label: 'Product Code', value: '1234567890123 07-20238', type: 'barcode' as const },
-    { label: 'Website URL', value: 'https://www.example.com', type: 'qr' as const },
-    { label: 'Contact Info', value: 'John Doe\n+1234567890\njohn@example.com', type: 'qr' as const },
-
+    { label: 'Product Code (CODE128)', value: '1234567890123', type: 'barcode' as const, format: 'CODE128' as const },
+    { label: 'EAN-13 Barcode', value: '5901234123457', type: 'barcode' as const, format: 'EAN13' as const },
+    { label: 'CODE39 Barcode', value: 'HELLO123', type: 'barcode' as const, format: 'CODE39' as const },
+    { label: 'Website URL', value: 'https://www.example.com', type: 'qr' as const, format: 'CODE128' as const },
+    { label: 'Contact Info', value: 'John Doe\n+1234567890\njohn@example.com', type: 'qr' as const, format: 'CODE128' as const },
   ];
 
   const handleGenerate = () => {
     if (inputData.trim()) {
+      // Validate barcode data based on format
+      if (codeType === 'barcode') {
+        const trimmedData = inputData.trim();
+        if (barcodeFormat === 'EAN13' && trimmedData.length !== 13) {
+          Alert.alert('Error', 'EAN13 requires exactly 13 digits');
+          return;
+        }
+        if (barcodeFormat === 'EAN13' && !/^\d+$/.test(trimmedData)) {
+          Alert.alert('Error', 'EAN13 must contain only numbers');
+          return;
+        }
+      }
       setGeneratedData(inputData.trim());
     } else {
       Alert.alert('Error', 'Please enter some data to generate a code');
     }
   };
 
-  const handleSampleData = (value: string, type: 'qr' | 'barcode') => {
+  const handleSampleData = (value: string, type: 'qr' | 'barcode', format: 'CODE128' | 'EAN13' | 'CODE39') => {
     setInputData(value);
     setCodeType(type);
+    setBarcodeFormat(format);
     setGeneratedData(value);
   };
 
@@ -75,6 +98,43 @@ function BarcodeGenerator({ onClose }: BarcodeGeneratorProps) {
           <Text style={styles.errorText}>❌</Text>
           <Text style={styles.errorNote}>
             Error rendering QR Code: {error instanceof Error ? error.message : 'Unknown error'}
+          </Text>
+        </View>
+      );
+    }
+  };
+
+  const renderBarcode = () => {
+    if (!Barcode) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>❌</Text>
+          <Text style={styles.errorNote}>
+            Barcode library not installed.{'\n'}
+            Run: npm install react-native-barcode-builder
+          </Text>
+        </View>
+      );
+    }
+
+    try {
+      return (
+        <Barcode
+          value={generatedData}
+          format={barcodeFormat}
+          width={2}
+          height={100}
+          background="#ffffff"
+          lineColor="#000000"
+          text={generatedData}
+        />
+      );
+    } catch (error) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>❌</Text>
+          <Text style={styles.errorNote}>
+            Error rendering Barcode: {error instanceof Error ? error.message : 'Unknown error'}
           </Text>
         </View>
       );
@@ -113,6 +173,39 @@ function BarcodeGenerator({ onClose }: BarcodeGeneratorProps) {
           </TouchableOpacity>
         </View>
 
+        {/* Barcode Format Selector */}
+        {codeType === 'barcode' && (
+          <View style={styles.formatSelector}>
+            <Text style={styles.label}>Barcode Format:</Text>
+            <View style={styles.formatButtons}>
+              <TouchableOpacity
+                style={[styles.formatButton, barcodeFormat === 'CODE128' && styles.formatButtonActive]}
+                onPress={() => setBarcodeFormat('CODE128')}
+              >
+                <Text style={[styles.formatButtonText, barcodeFormat === 'CODE128' && styles.formatButtonTextActive]}>
+                  CODE128
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.formatButton, barcodeFormat === 'EAN13' && styles.formatButtonActive]}
+                onPress={() => setBarcodeFormat('EAN13')}
+              >
+                <Text style={[styles.formatButtonText, barcodeFormat === 'EAN13' && styles.formatButtonTextActive]}>
+                  EAN13
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.formatButton, barcodeFormat === 'CODE39' && styles.formatButtonActive]}
+                onPress={() => setBarcodeFormat('CODE39')}
+              >
+                <Text style={[styles.formatButtonText, barcodeFormat === 'CODE39' && styles.formatButtonTextActive]}>
+                  CODE39
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Input Section */}
         <View style={styles.inputSection}>
           <Text style={styles.label}>Enter Data:</Text>
@@ -120,9 +213,11 @@ function BarcodeGenerator({ onClose }: BarcodeGeneratorProps) {
             style={styles.input}
             value={inputData}
             onChangeText={setInputData}
-            placeholder="Enter text, URL, or data..."
+            placeholder={codeType === 'barcode' 
+              ? `Enter ${barcodeFormat} data...` 
+              : "Enter text, URL, or data..."}
             placeholderTextColor="#94a3b8"
-            multiline
+            multiline={codeType === 'qr'}
           />
           <TouchableOpacity style={styles.generateButton} onPress={handleGenerate}>
             <Text style={styles.generateButtonText}>Generate Code</Text>
@@ -132,18 +227,11 @@ function BarcodeGenerator({ onClose }: BarcodeGeneratorProps) {
         {/* Generated Code Display */}
         {generatedData && (
           <View style={styles.codeDisplay}>
-            <Text style={styles.codeLabel}>Generated {codeType === 'qr' ? 'QR Code' : 'Barcode'}:</Text>
+            <Text style={styles.codeLabel}>
+              Generated {codeType === 'qr' ? 'QR Code' : `Barcode (${barcodeFormat})`}:
+            </Text>
             <View style={styles.codeContainer}>
-              {codeType === 'qr' ? (
-                renderQRCode()
-              ) : (
-                <View style={styles.barcodeSimulation}>
-                  <Text style={styles.barcodeText}>📊</Text>
-                  <Text style={styles.barcodeNote}>
-                    Note: For actual barcode rendering, use a library like react-native-barcode-builder
-                  </Text>
-                </View>
-              )}
+              {codeType === 'qr' ? renderQRCode() : renderBarcode()}
             </View>
             <Text style={styles.dataText}>{generatedData}</Text>
           </View>
@@ -156,7 +244,7 @@ function BarcodeGenerator({ onClose }: BarcodeGeneratorProps) {
             <TouchableOpacity
               key={index}
               style={styles.sampleButton}
-              onPress={() => handleSampleData(sample.value, sample.type)}
+              onPress={() => handleSampleData(sample.value, sample.type, sample.format)}
             >
               <View style={styles.sampleContent}>
                 <Text style={styles.sampleLabel}>{sample.label}</Text>
@@ -174,11 +262,17 @@ function BarcodeGenerator({ onClose }: BarcodeGeneratorProps) {
           <Text style={styles.instructionsTitle}>💡 How to use:</Text>
           <Text style={styles.instructionsText}>
             1. Select code type (QR or Barcode){'\n'}
-            2. Enter your custom data or use a sample{'\n'}
-            3. Generate the code{'\n'}
-            4. Close this screen and scan the generated code{'\n'}
-            5. Take a screenshot to test scanning
+            2. For barcodes, choose the format (CODE128, EAN13, CODE39){'\n'}
+            3. Enter your custom data or use a sample{'\n'}
+            4. Generate the code{'\n'}
+            5. Close this screen and scan the generated code{'\n'}
+            6. Take a screenshot to test scanning
           </Text>
+          {codeType === 'barcode' && (
+            <Text style={styles.instructionsNote}>
+              {'\n'}Note: EAN13 requires exactly 13 digits. CODE128 accepts alphanumeric. CODE39 accepts uppercase letters and numbers.
+            </Text>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -246,6 +340,35 @@ const styles = StyleSheet.create({
   typeButtonTextActive: {
     color: '#fff',
   },
+  formatSelector: {
+    marginBottom: 20,
+  },
+  formatButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  formatButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  formatButtonActive: {
+    backgroundColor: '#4f46e5',
+    borderColor: '#6366f1',
+  },
+  formatButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94a3b8',
+  },
+  formatButtonTextActive: {
+    color: '#fff',
+  },
   inputSection: {
     marginBottom: 24,
   },
@@ -261,7 +384,7 @@ const styles = StyleSheet.create({
     padding: 16,
     color: '#f1f5f9',
     fontSize: 16,
-    minHeight: 100,
+    minHeight: 60,
     textAlignVertical: 'top',
     borderWidth: 1,
     borderColor: '#334155',
@@ -298,6 +421,8 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 12,
     marginBottom: 16,
+    minWidth: 250,
+    alignItems: 'center',
   },
   barcodeSimulation: {
     width: 200,
@@ -317,7 +442,7 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     width: 200,
-    height: 200,
+    minHeight: 150,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -397,6 +522,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94a3b8',
     lineHeight: 22,
+  },
+  instructionsNote: {
+    fontSize: 13,
+    color: '#fbbf24',
+    lineHeight: 20,
+    fontStyle: 'italic',
   },
 });
 
