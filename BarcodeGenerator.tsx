@@ -8,6 +8,8 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import JsBarcode from 'jsbarcode';
+import Svg, { Rect, G } from 'react-native-svg';
 
 // Try-catch import for QRCode
 let QRCode: any;
@@ -17,16 +19,16 @@ try {
   console.warn('react-native-qrcode-svg not available');
 }
 
-// Try-catch import for Barcode
-let Barcode: any;
-try {
-  Barcode = require('react-native-barcode-builder').default;
-} catch (e) {
-  console.warn('react-native-barcode-builder not available');
-}
-
 interface BarcodeGeneratorProps {
   onClose: () => void;
+}
+
+interface BarcodeData {
+  encodings: Array<{
+    data: string;
+    text: string;
+    options: any;
+  }>;
 }
 
 function BarcodeGenerator({ onClose }: BarcodeGeneratorProps) {
@@ -105,29 +107,60 @@ function BarcodeGenerator({ onClose }: BarcodeGeneratorProps) {
   };
 
   const renderBarcode = () => {
-    if (!Barcode) {
-      return (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>❌</Text>
-          <Text style={styles.errorNote}>
-            Barcode library not installed.{'\n'}
-            Run: npm install react-native-barcode-builder
-          </Text>
-        </View>
-      );
-    }
-
     try {
+      // Create a virtual canvas-like object for JsBarcode
+      const barcodeData: BarcodeData = { encodings: [] };
+      
+      JsBarcode(barcodeData as any, generatedData, {
+        format: barcodeFormat,
+        width: 2,
+        height: 100,
+        displayValue: true,
+        fontSize: 14,
+        margin: 10,
+      });
+
+      if (!barcodeData.encodings || barcodeData.encodings.length === 0) {
+        throw new Error('Failed to generate barcode');
+      }
+
+      const encoding = barcodeData.encodings[0];
+      const binary = encoding.data;
+      
+      // Calculate dimensions
+      const width = binary.length * 2;
+      const height = 100;
+      const totalHeight = height + 30; // Add space for text
+
+      // Convert binary string to SVG rectangles
+      const bars: JSX.Element[] = [];
+      let x = 0;
+      
+      for (let i = 0; i < binary.length; i++) {
+        if (binary[i] === '1') {
+          bars.push(
+            <Rect
+              key={i}
+              x={x}
+              y={0}
+              width={2}
+              height={height}
+              fill="#000000"
+            />
+          );
+        }
+        x += 2;
+      }
+
       return (
-        <Barcode
-          value={generatedData}
-          format={barcodeFormat}
-          width={2}
-          height={100}
-          background="#ffffff"
-          lineColor="#000000"
-          text={generatedData}
-        />
+        <View style={styles.barcodeWrapper}>
+          <Svg width={width} height={totalHeight} viewBox={`0 0 ${width} ${totalHeight}`}>
+            <G>
+              {bars}
+            </G>
+          </Svg>
+          <Text style={styles.barcodeTextLabel}>{encoding.text || generatedData}</Text>
+        </View>
       );
     } catch (error) {
       return (
@@ -424,21 +457,14 @@ const styles = StyleSheet.create({
     minWidth: 250,
     alignItems: 'center',
   },
-  barcodeSimulation: {
-    width: 200,
-    height: 200,
-    justifyContent: 'center',
+  barcodeWrapper: {
     alignItems: 'center',
-    padding: 20,
   },
-  barcodeText: {
-    fontSize: 64,
-    marginBottom: 12,
-  },
-  barcodeNote: {
-    fontSize: 12,
-    color: '#64748b',
-    textAlign: 'center',
+  barcodeTextLabel: {
+    fontSize: 14,
+    color: '#000',
+    marginTop: 5,
+    fontFamily: 'monospace',
   },
   errorContainer: {
     width: 200,
